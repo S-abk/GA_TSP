@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traveling Salesman Problem with Genetic Algorithm</title>
+<style>
+  /* Your CSS styling goes here */
+</style>
+</head>
+<body>
+
+<!-- UI Elements -->
+<div>
+  <label for="popSize">Population Size:</label>
+  <input type="number" id="popSize" name="popSize" value="100">
+</div>
+<div>
+  <label for="eliteSize">Elite Size:</label>
+  <input type="number" id="eliteSize" name="eliteSize" value="20">
+</div>
+<div>
+  <label for="mutationRate">Mutation Rate:</label>
+  <input type="range" id="mutationRate" name="mutationRate" min="0" max="1" step="0.01" value="0.01">
+</div>
+<div>
+  <label for="generations">Number of Generations:</label>
+  <input type="number" id="generations" name="generations" value="500">
+</div>
+<button onclick="startGA()">Start</button>
+<canvas id="canvas" width="400" height="400"></canvas>
+
+<script>
+  // Your JavaScript Code
+
+  class City {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+    distance(city) {
+      const dx = this.x - city.x;
+      const dy = this.y - city.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+
+  class Route {
+    constructor(cities) {
+      this.cities = cities;
+      this.distance = this.calculateDistance();
+    }
+    calculateDistance() {
+      let totalDistance = 0;
+      for (let i = 0; i < this.cities.length - 1; i++) {
+        totalDistance += this.cities[i].distance(this.cities[i + 1]);
+      }
+      totalDistance += this.cities[this.cities.length - 1].distance(this.cities[0]);  // Close the loop
+      return totalDistance;
+    }
+  }
+
+  function generatePopulation(size, cityList) {
+    const population = [];
+    for (let i = 0; i < size; i++) {
+      const route = new Route(cityList.slice().sort(() => Math.random() - 0.5));
+      population.push(route);
+    }
+    return population;
+  }
+
+  function mutate(route, mutationRate) {
+    for (let i = 0; i < route.cities.length; i++) {
+      if (Math.random() < mutationRate) {
+        const j = Math.floor(Math.random() * route.cities.length);
+        [route.cities[i], route.cities[j]] = [route.cities[j], route.cities[i]];  // Swap two cities
+      }
+    }
+  }
+
+  function nextGeneration(population, eliteSize, mutationRate) {
+    const sortedPop = population.slice().sort((a, b) => a.distance - b.distance);
+    const newPopulation = sortedPop.slice(0, eliteSize);  // Elitism
+    while (newPopulation.length < population.length) {
+      const parent1 = sortedPop[Math.floor(Math.random() * eliteSize)];
+      const parent2 = sortedPop[Math.floor(Math.random() * eliteSize)];
+      const half = parent1.cities.length / 2;
+      const childCities = parent1.cities.slice(0, half).concat(
+        parent2.cities.filter(city => !parent1.cities.slice(0, half).includes(city))
+      );
+      const child = new Route(childCities);
+      mutate(child, mutationRate);  // Mutation
+      newPopulation.push(child);
+    }
+    return newPopulation;
+  }
+
+  function startGA() {
+    const popSize = document.getElementById('popSize').value;
+    const eliteSize = document.getElementById('eliteSize').value;
+    const mutationRate = document.getElementById('mutationRate').value;
+    const generations = document.getElementById('generations').value;
+
+    const cityList = [];
+    for (let i = 0; i < 20; i++) {  // Generating 20 random cities
+      cityList.push(new City(Math.random() * 400, Math.random() * 400));
+    }
+
+    let population = generatePopulation(popSize, cityList);
+    for (let i = 0; i < generations; i++) {
+      population = nextGeneration(population, eliteSize, mutationRate);
+    }
+
+    const bestRoute = population.sort((a, b) => a.distance - b.distance)[0];
+    drawBestRoute(bestRoute);
+  }
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  function drawBestRoute(bestRoute) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(bestRoute.cities[0].x, bestRoute.cities[0].y);
+    for (let i = 1; i < bestRoute.cities.length; i++) {
+      ctx.lineTo(bestRoute.cities[i].x, bestRoute.cities[i].y);
+    }
+    ctx.closePath();  // Close the loop
+    ctx.stroke();
+  }
+
+</script>
+
+</body>
+</html>
